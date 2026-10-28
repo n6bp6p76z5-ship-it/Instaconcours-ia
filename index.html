@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>InstaConcours AI</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;padding:20px;background:#10111b;color:#f5f6fb;font-family:Arial,sans-serif}
+header,.card{background:#191b29;border:1px solid #303348;border-radius:16px;padding:18px;margin-bottom:16px}
+h1{color:#b9f36a;font-size:25px}
+h2{font-size:19px}
+p{color:#b8bbcc}
+.stat{display:flex;gap:10px}
+.stat div{flex:1;background:#202336;padding:12px;border-radius:10px;text-align:center}
+strong{display:block;font-size:24px;color:#b9f36a}
+label{display:block;margin-top:14px;margin-bottom:6px}
+input,select,button{width:100%;padding:12px;border-radius:9px;border:1px solid #41445b;background:#11131f;color:white;font-size:15px}
+button{background:#b9f36a;color:#11131b;font-weight:bold;border:none;margin-top:14px}
+.item{padding:12px;background:#202336;border-radius:10px;margin-top:10px;overflow-wrap:anywhere}
+.item button{background:#34374b;color:white}
+small{color:#b8bbcc}
+</style>
+</head>
+<body>
+
+<header>
+<h1>🏆 InstaConcours AI</h1>
+<p>Ton assistant personnel pour les concours Instagram.</p>
+<small>Prototype gratuit — version initiale</small>
+</header>
+
+<div class="stat">
+<div>Concours<strong id="total">0</strong></div>
+<div>Participations<strong id="part">0</strong></div>
+<div>Gains<strong id="wins">0</strong></div>
+</div>
+
+<section class="card">
+<h2>⚙️ Mes critères</h2>
+
+<label>Abonnés minimum</label>
+<input id="minimum" type="number" value="300000">
+
+<label>Lots recherchés</label>
+<select id="lot">
+<option>Argent</option>
+<option>Voiture</option>
+<option>Voyage</option>
+<option>Spa et détente</option>
+<option>Moto</option>
+<option>Autre cadeau</option>
+</select>
+
+<p>Langue souhaitée : français.</p>
+<p>Pays du lot : sans restriction.</p>
+
+<button onclick="saveCriteria()">Enregistrer mes critères</button>
+</section>
+
+<section class="card">
+<h2>＋ Ajouter un concours</h2>
+
+<label>Nom du lot</label>
+<input id="name" placeholder="Ex. Une voiture à gagner">
+
+<label>Compte Instagram</label>
+<input id="account" placeholder="@organisateur">
+
+<label>Nombre d'abonnés</label>
+<input id="followers" type="number" placeholder="500000">
+
+<label>Lien Instagram</label>
+<input id="url" placeholder="https://www.instagram.com/...">
+
+<button onclick="addContest()">Ajouter au suivi</button>
+</section>
+
+<section class="card">
+<h2>📋 Mes concours</h2>
+<div id="list">Aucun concours enregistré.</div>
+</section>
+
+<section class="card">
+<h2>📊 Informations</h2>
+<p id="status">Tableau de bord initialisé.</p>
+</section>
+
+<script>
+const KEY="instaconcours-ai";
+let contests=[];
+
+try {
+contests=JSON.parse(localStorage.getItem(KEY)||"[]");
+} catch(e) {
+contests=[];
+}
+
+function save(){
+localStorage.setItem(KEY,JSON.stringify(contests));
+render();
+}
+
+function saveCriteria(){
+localStorage.setItem("instaconcours-minimum",
+document.getElementById("minimum").value);
+document.getElementById("status").textContent=
+"Critères enregistrés sur cet appareil.";
+}
+
+function addContest(){
+const name=document.getElementById("name").value.trim();
+const account=document.getElementById("account").value.trim();
+
+if(!name||!account){
+alert("Indique le nom du lot et le compte Instagram.");
+return;
+}
+
+contests.push({
+name:name,
+account:account,
+followers:Number(document.getElementById("followers").value)||0,
+url:document.getElementById("url").value.trim(),
+status:"Détecté",
+lot:document.getElementById("lot").value
+});
+
+save();
+
+document.getElementById("name").value="";
+document.getElementById("account").value="";
+document.getElementById("followers").value="";
+document.getElementById("url").value="";
+}
+
+function changeStatus(index,value){
+contests[index].status=value;
+save();
+}
+
+function removeContest(index){
+contests.splice(index,1);
+save();
+}
+
+function render(){
+document.getElementById("total").textContent=contests.length;
+
+document.getElementById("part").textContent=
+contests.filter(c=>c.status==="Participé").length;
+
+document.getElementById("wins").textContent=
+contests.filter(c=>c.status==="Gagné").length;
+
+const list=document.getElementById("list");
+
+if(!contests.length){
+list.textContent="Aucun concours enregistré.";
+return;
+}
+
+list.innerHTML="";
+
+contests.forEach((c,i)=>{
+const item=document.createElement("div");
+item.className="item";
+
+const title=document.createElement("strong");
+title.textContent=c.name;
+
+const info=document.createElement("p");
+info.textContent=c.account+" — "+
+c.followers.toLocaleString("fr-FR")+" abonnés";
+
+const prize=document.createElement("p");
+prize.textContent="Lot : "+c.lot;
+
+const status=document.createElement("select");
+
+["Détecté","Participé","Gagné","Perdu"].forEach(s=>{
+const option=document.createElement("option");
+option.value=s;
+option.textContent=s;
+option.selected=c.status===s;
+status.appendChild(option);
+});
+
+status.onchange=()=>changeStatus(i,status.value);
+
+item.append(title,info,prize,status);
+
+if(c.url){
+const link=document.createElement("a");
+link.href=c.url;
+link.target="_blank";
+link.rel="noopener noreferrer";
+link.textContent="Ouvrir le concours";
+link.style.display="block";
+link.style.marginTop="10px";
+item.appendChild(link);
+}
+
+const del=document.createElement("button");
+del.textContent="Supprimer";
+del.onclick=()=>removeContest(i);
+
+item.appendChild(del);
+list.appendChild(item);
+});
+}
+
+const minimum=localStorage.getItem("instaconcours-minimum");
+if(minimum){
+document.getElementById("minimum").value=minimum;
+}
+
+render();
+</script>
+
+</body>
+</html>
